@@ -1,0 +1,154 @@
+99	279.8221818181818	WITH valid_sensors AS (SELECT id FROM sensor WHERE store_id = 1) SELECT * FROM reading WHERE sensor_id IN (select id from valid_sensors)
+99	38.05545454545454	WITH valid_sensors AS (SELECT id FROM sensor WHERE store_id = 1 AND (sensor_type_id = 1 OR sensor_type_id = 2)) SELECT * FROM reading WHERE sensor_id IN (select id from valid_sensors)
+99	263.1547777777778	SELECT * FROM reading, sensor WHERE reading.sensor_id = sensor.id AND sensor.store_id = 1
+99	0.9692323232323236	SELECT * FROM sensor WHERE sensor.store_id = 1
+99	0.4643838383838383	SELECT * FROM sensor_type
+
+99	273.8416565656565	SELECT * FROM reading
+99	285.2514545454546	WITH valid_sensors AS (SELECT id FROM sensor WHERE sensor_type_id = 1 OR sensor_type_id = 2) SELECT * FROM reading WHERE sensor_id IN (select id from valid_sensors)
+99	350.3900202020202	SELECT * FROM reading, sensor WHERE reading.sensor_id = sensor.id
+99	1.0006666666666664	SELECT * FROM sensor
+99	0.4614747474747476	SELECT * FROM sensor_type
+
+Hash Join  (cost=15.24..205.15 rows=5085 width=8) (actual time=3.964..278.461 rows=5001 loops=1)
+  Hash Cond: (reading.sensor_id = valid_sensors.id)
+  CTE valid_sensors
+    ->  Bitmap Heap Scan on sensor  (cost=4.23..14.79 rows=10 width=4) (actual time=0.049..0.661 rows=51 loops=1)
+          Recheck Cond: (store_id = 1)
+          Heap Blocks: exact=1
+          ->  Bitmap Index Scan on ix_sensor_store_id  (cost=0.00..4.23 rows=10 width=0) (actual time=0.019..0.029 rows=51 loops=1)
+                Index Cond: (store_id = 1)
+  ->  Seq Scan on reading  (cost=0.00..146.70 rows=10170 width=8) (actual time=0.031..108.411 rows=10002 loops=1)
+  ->  Hash  (cost=0.33..0.33 rows=10 width=4) (actual time=3.881..3.930 rows=51 loops=1)
+        Buckets: 1024  Batches: 1  Memory Usage: 10kB
+        ->  HashAggregate  (cost=0.23..0.33 rows=10 width=4) (actual time=2.756..3.378 rows=51 loops=1)
+              Group Key: valid_sensors.id
+              ->  CTE Scan on valid_sensors  (cost=0.00..0.20 rows=10 width=4) (actual time=0.073..1.901 rows=51 loops=1)
+Planning time: 5.648 ms
+Execution time: 332.059 ms
+
+Nested Loop  (cost=19.54..67.91 rows=5085 width=8) (actual time=0.962..54.788 rows=1001 loops=1)
+  CTE valid_sensors
+    ->  Bitmap Heap Scan on sensor  (cost=4.23..14.83 rows=1 width=4) (actual time=0.051..0.373 rows=6 loops=1)
+          Recheck Cond: (store_id = 1)
+          Filter: ((sensor_type_id = 1) OR (sensor_type_id = 2))
+          Rows Removed by Filter: 45
+          Heap Blocks: exact=1
+          ->  Bitmap Index Scan on ix_sensor_store_id  (cost=0.00..4.23 rows=10 width=0) (actual time=0.021..0.031 rows=51 loops=1)
+                Index Cond: (store_id = 1)
+  ->  HashAggregate  (cost=0.02..0.03 rows=1 width=4) (actual time=0.630..0.815 rows=6 loops=1)
+        Group Key: valid_sensors.id
+        ->  CTE Scan on valid_sensors  (cost=0.00..0.02 rows=1 width=4) (actual time=0.074..0.541 rows=6 loops=1)
+  ->  Bitmap Heap Scan on reading  (cost=4.68..52.54 rows=51 width=8) (actual time=0.070..3.168 rows=167 loops=6)
+        Recheck Cond: (sensor_id = valid_sensors.id)
+        Heap Blocks: exact=90
+        ->  Bitmap Index Scan on ix_reading_sensor_id  (cost=0.00..4.67 rows=51 width=0) (actual time=0.040..0.050 rows=167 loops=6)
+              Index Cond: (sensor_id = valid_sensors.id)
+Planning time: 0.377 ms
+Execution time: 74.071 ms
+
+Hash Join  (cost=14.91..200.25 rows=50 width=20) (actual time=1.718..447.436 rows=5001 loops=1)
+  Hash Cond: (reading.sensor_id = sensor.id)
+  ->  Seq Scan on reading  (cost=0.00..146.70 rows=10170 width=8) (actual time=0.013..177.327 rows=10002 loops=1)
+  ->  Hash  (cost=14.79..14.79 rows=10 width=12) (actual time=1.655..1.666 rows=51 loops=1)
+        Buckets: 1024  Batches: 1  Memory Usage: 11kB
+        ->  Bitmap Heap Scan on sensor  (cost=4.23..14.79 rows=10 width=12) (actual time=0.075..0.741 rows=51 loops=1)
+              Recheck Cond: (store_id = 1)
+              Heap Blocks: exact=1
+              ->  Bitmap Index Scan on ix_sensor_store_id  (cost=0.00..4.23 rows=10 width=0) (actual time=0.010..0.020 rows=51 loops=1)
+                    Index Cond: (store_id = 1)
+Planning time: 0.297 ms
+Execution time: 538.372 ms
+
+Seq Scan on sensor  (cost=0.00..2.28 rows=51 width=12) (actual time=0.030..0.909 rows=51 loops=1)
+  Filter: (store_id = 1)
+  Rows Removed by Filter: 51
+Planning time: 18.943 ms
+Execution time: 1.739 ms
+
+Seq Scan on sensor_type  (cost=0.00..35.50 rows=2550 width=4) (actual time=0.105..0.355 rows=22 loops=1)
+Planning time: 0.095 ms
+Execution time: 0.657 ms
+
+Hash Join  (cost=15.22..205.14 rows=5085 width=8) (actual time=1.711..214.803 rows=5001 loops=1)
+  Hash Cond: (reading.sensor_id = sensor.id)
+  ->  Seq Scan on reading  (cost=0.00..146.70 rows=10170 width=8) (actual time=0.019..85.406 rows=10002 loops=1)
+  ->  Hash  (cost=15.09..15.09 rows=10 width=4) (actual time=1.646..1.654 rows=51 loops=1)
+        Buckets: 1024  Batches: 1  Memory Usage: 10kB
+        ->  HashAggregate  (cost=14.99..15.09 rows=10 width=4) (actual time=0.816..1.193 rows=51 loops=1)
+              Group Key: sensor.id
+              ->  Bitmap Heap Scan on sensor  (cost=4.24..14.87 rows=10 width=4) (actual time=0.031..0.410 rows=51 loops=1)
+                    Recheck Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+                    Heap Blocks: exact=1
+                    ->  Bitmap Index Scan on ix_sensor_store_id  (cost=0.00..4.24 rows=10 width=0) (actual time=0.016..0.024 rows=51 loops=1)
+                          Index Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+Planning time: 3.762 ms
+Execution time: 256.642 ms
+
+Hash Join  (cost=30.19..290.27 rows=2542 width=8) (actual time=2.630..315.481 rows=1001 loops=1)
+  Hash Cond: (reading.sensor_id = valid_sensors.id)
+  CTE valid_sensors
+    ->  Subquery Scan on sensor_1  (cost=4.24..14.93 rows=1 width=4) (actual time=0.059..0.222 rows=6 loops=1)
+          ->  Bitmap Heap Scan on sensor sensor_2  (cost=4.24..14.92 rows=1 width=8) (actual time=0.043..0.109 rows=6 loops=1)
+                Recheck Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+                Filter: ((sensor_type_id = 1) OR (sensor_type_id = 2))
+                Rows Removed by Filter: 45
+                Heap Blocks: exact=1
+                ->  Bitmap Index Scan on ix_sensor_store_id  (cost=0.00..4.24 rows=10 width=0) (actual time=0.018..0.026 rows=51 loops=1)
+                      Index Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+  ->  Hash Join  (cost=15.22..205.14 rows=5085 width=8) (actual time=2.014..254.551 rows=5001 loops=1)
+        Hash Cond: (reading.sensor_id = sensor.id)
+        ->  Seq Scan on reading  (cost=0.00..146.70 rows=10170 width=8) (actual time=0.016..99.284 rows=10002 loops=1)
+        ->  Hash  (cost=15.09..15.09 rows=10 width=4) (actual time=1.939..1.947 rows=51 loops=1)
+              Buckets: 1024  Batches: 1  Memory Usage: 10kB
+              ->  HashAggregate  (cost=14.99..15.09 rows=10 width=4) (actual time=1.034..1.476 rows=51 loops=1)
+                    Group Key: sensor.id
+                    ->  Bitmap Heap Scan on sensor  (cost=4.24..14.87 rows=10 width=4) (actual time=0.037..0.560 rows=51 loops=1)
+                          Recheck Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+                          Heap Blocks: exact=1
+                          ->  Bitmap Index Scan on ix_sensor_store_id  (cost=0.00..4.24 rows=10 width=0) (actual time=0.017..0.025 rows=51 loops=1)
+                                Index Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+  ->  Hash  (cost=0.03..0.03 rows=1 width=4) (actual time=0.584..0.592 rows=6 loops=1)
+        Buckets: 1024  Batches: 1  Memory Usage: 9kB
+        ->  HashAggregate  (cost=0.02..0.03 rows=1 width=4) (actual time=0.402..0.461 rows=6 loops=1)
+              Group Key: valid_sensors.id
+              ->  CTE Scan on valid_sensors  (cost=0.00..0.02 rows=1 width=4) (actual time=0.077..0.337 rows=6 loops=1)
+Planning time: 0.255 ms
+Execution time: 325.515 ms
+
+Hash Join  (cost=30.31..292.69 rows=254 width=20) (actual time=3.585..339.229 rows=5001 loops=1)
+  Hash Cond: (reading.sensor_id = sensor_1.id)
+  ->  Hash Join  (cost=15.22..205.14 rows=5085 width=8) (actual time=2.282..241.574 rows=5001 loops=1)
+        Hash Cond: (reading.sensor_id = sensor.id)
+        ->  Seq Scan on reading  (cost=0.00..146.70 rows=10170 width=8) (actual time=0.038..95.672 rows=10002 loops=1)
+        ->  Hash  (cost=15.09..15.09 rows=10 width=4) (actual time=2.173..2.180 rows=51 loops=1)
+              Buckets: 1024  Batches: 1  Memory Usage: 10kB
+              ->  HashAggregate  (cost=14.99..15.09 rows=10 width=4) (actual time=1.210..1.722 rows=51 loops=1)
+                    Group Key: sensor.id
+                    ->  Bitmap Heap Scan on sensor  (cost=4.24..14.87 rows=10 width=4) (actual time=0.072..0.700 rows=51 loops=1)
+                          Recheck Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+                          Heap Blocks: exact=1
+                          ->  Bitmap Index Scan on ix_sensor_store_id  (cost=0.00..4.24 rows=10 width=0) (actual time=0.043..0.049 rows=51 loops=1)
+                                Index Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+  ->  Hash  (cost=14.97..14.97 rows=10 width=12) (actual time=1.269..1.275 rows=51 loops=1)
+        Buckets: 1024  Batches: 1  Memory Usage: 11kB
+        ->  Bitmap Heap Scan on sensor sensor_1  (cost=4.24..14.87 rows=10 width=12) (actual time=0.049..0.672 rows=51 loops=1)
+              Recheck Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+              Heap Blocks: exact=1
+              ->  Bitmap Index Scan on ix_sensor_store_id  (cost=0.00..4.24 rows=10 width=0) (actual time=0.025..0.032 rows=51 loops=1)
+                    Index Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+Planning time: 0.362 ms
+Execution time: 388.133 ms
+
+Bitmap Heap Scan on sensor  (cost=4.24..14.87 rows=10 width=12) (actual time=0.068..0.748 rows=51 loops=1)
+  Recheck Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+  Heap Blocks: exact=1
+  ->  Bitmap Index Scan on ix_sensor_store_id  (cost=0.00..4.24 rows=10 width=0) (actual time=0.053..0.060 rows=51 loops=1)
+        Index Cond: (store_id = (current_setting('variables.store_id'::text))::integer)
+Planning time: 0.158 ms
+Execution time: 1.539 ms
+
+Seq Scan on sensor_type  (cost=0.00..35.50 rows=2550 width=4) (actual time=0.012..0.154 rows=22 loops=1)
+Planning time: 0.025 ms
+Execution time: 0.327 ms
+

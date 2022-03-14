@@ -1,0 +1,21 @@
+version: '2'
+services:
+  postgres:
+    image: 'postgres:14'
+    restart: always
+    volumes:
+      - './postgres_data:/var/lib/postgresql/data'
+    environment:
+      - POSTGRES_DB=db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    ports:
+      - '5432:5432'
+  python:
+    build: .
+    environment:
+      - DB_ENGINE=postgres:14
+    volumes:
+      - './src:/src'
+    depends_on:
+      - postgres
